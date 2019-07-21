@@ -10,11 +10,17 @@ Date: 21/07/2019
 # import Relevant Librares
 import RPi.GPIO as GPIO
 import time
+import itertools
 
 # Variables:
 leds = [11, 13, 15]
 buttons = [16, 18]
 
+# LED states
+states = list(itertools.product([0,1],repeat=3))
+
+# Counter
+count = 0
 
 def setup():
 	# Use BOARD numbering
@@ -26,19 +32,19 @@ def setup():
 	# Set up button pins as inputs, with internal pull-down resistors active
 	GPIO.setup(buttons, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 	# Add event callbacks
-	GPIO.add_event_detect(buttons[0], GPIO.RISING, callback=my_callbackk, bouncetime=200)
-	GPIO.add_event_detect(buttons[1], GPIO.RISING, callback=my_callbackk, bouncetime=200)
+	GPIO.add_event_detect(buttons[0], GPIO.RISING, callback=button_callback, bouncetime=200)
+	GPIO.add_event_detect(buttons[1], GPIO.RISING, callback=button_callback, bouncetime=200)
 
 def loop():
-	for i in range(3):
-		GPIO.output(leds[i],1)
-		time.sleep(1)
-		GPIO.output(leds[i],0)
+	global count
+	GPIO.output(leds,states[count])
 
-def my_callbackk(channel):
-	print('This is a edge event callback function!')
-	print('Edge detected on channel %s'%channel)
-	print('This is run in a different thread to your main program')
+def button_callback(channel):
+	global count
+	if channel == buttons[0]: count += 1
+	elif channel == buttons[1]: count -= 1
+	else: print("Unknown callback detected!")
+	count = count%8;
 
 
 # Only run the functions if 
