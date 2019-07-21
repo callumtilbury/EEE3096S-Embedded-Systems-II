@@ -46,10 +46,13 @@ def loop():
 
 def button_callback(channel):
 	global count
+	# If increment button was pressed
 	if channel == buttons[0]: count += 1
+	# If decrement button was pressed
 	elif channel == buttons[1]: count -= 1
 	else: print("Unknown callback detected!")
-	count = count%(2**(len(leds)));
+	# Bring value back into appropriate range for leds
+	#count = count%(2**(len(leds)));
 
 
 # Only run the functions if 
