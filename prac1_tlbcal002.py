@@ -17,10 +17,13 @@ leds = [11, 13, 15]
 buttons = [16, 18]
 
 # LED states
-states = list(itertools.product([0,1],repeat=3))
+states = list(itertools.product([0,1],repeat=len(leds)))
 
 # Counter
 count = 0
+
+# Debounce time in milliseconds
+debounce_ms = 300
 
 def setup():
 	# Use BOARD numbering
@@ -32,8 +35,10 @@ def setup():
 	# Set up button pins as inputs, with internal pull-down resistors active
 	GPIO.setup(buttons, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 	# Add event callbacks
-	GPIO.add_event_detect(buttons[0], GPIO.RISING, callback=button_callback, bouncetime=200)
-	GPIO.add_event_detect(buttons[1], GPIO.RISING, callback=button_callback, bouncetime=200)
+	GPIO.add_event_detect(buttons[0], GPIO.RISING, callback=button_callback, bouncetime=debounce_ms)
+	GPIO.add_event_detect(buttons[1], GPIO.RISING, callback=button_callback, bouncetime=debounce_ms)
+	# Indicate to terminal that setup is done
+	print("Setup complete.")
 
 def loop():
 	global count
@@ -44,7 +49,7 @@ def button_callback(channel):
 	if channel == buttons[0]: count += 1
 	elif channel == buttons[1]: count -= 1
 	else: print("Unknown callback detected!")
-	count = count%8;
+	count = count%(2**(len(leds)));
 
 
 # Only run the functions if 
