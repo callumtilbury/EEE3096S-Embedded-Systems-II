@@ -13,7 +13,7 @@ import time
 
 # Variables:
 leds = [11, 13, 15]
-buttons = [16]
+buttons = [16, 18]
 
 
 def setup():
@@ -25,12 +25,20 @@ def setup():
 	GPIO.setup(leds, GPIO.OUT, initial=GPIO.LOW)
 	# Set up button pins as inputs, with internal pull-down resistors active
 	GPIO.setup(buttons, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+	# Add event callbacks
+	GPIO.add_event_detect(buttons[0], GPIO.RISING, callback=my_callbackk, bouncetime=200)
+	GPIO.add_event_detect(buttons[1], GPIO.RISING, callback=my_callbackk, bouncetime=200)
 
 def loop():
 	for i in range(3):
 		GPIO.output(leds[i],1)
-		GPIO.wait_for_edge(buttons[0], GPIO.RISING)
+		time.sleep(1)
 		GPIO.output(leds[i],0)
+
+def my_callbackk(channel):
+	print('This is a edge event callback function!')
+	print('Edge detected on channel %s'%channel)
+	print('This is run in a different thread to your main program')
 
 
 # Only run the functions if 
