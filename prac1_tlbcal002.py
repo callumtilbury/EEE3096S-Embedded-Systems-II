@@ -13,6 +13,8 @@ import time
 
 # Variables:
 leds = [11, 13, 15]
+buttons = [16]
+
 
 def setup():
 	# Use BOARD numbering
@@ -21,11 +23,13 @@ def setup():
 	GPIO.setwarnings(False)
 	# Set up LED pins as outputs, and turn them off
 	GPIO.setup(leds, GPIO.OUT, initial=GPIO.LOW)
+	# Set up button pins as inputs, with internal pull-down resistors active
+	GPIO.setup(buttons, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def loop():
 	for i in range(3):
 		GPIO.output(leds[i],1)
-		time.sleep(1)
+		GPIO.wait_for_edge(buttons[0], GPIO.RISING)
 		GPIO.output(leds[i],0)
 
 
