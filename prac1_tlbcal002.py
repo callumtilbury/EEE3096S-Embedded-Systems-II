@@ -52,7 +52,7 @@ def button_callback(channel):
 	elif channel == buttons[1]: count -= 1
 	else: print("Unknown callback detected!")
 	# Bring value back into appropriate range for leds
-	#count = count%(2**(len(leds)));
+	count = count%(2**(len(leds)));
 
 
 # Only run the functions if 
