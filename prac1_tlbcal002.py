@@ -25,6 +25,7 @@ count = 0
 # Debounce time in milliseconds
 debounce_ms = 300
 
+# Run once
 def setup():
 	# Use BOARD numbering
 	GPIO.setmode(GPIO.BOARD)
@@ -40,33 +41,40 @@ def setup():
 	# Indicate to terminal that setup is done
 	print("Setup complete.")
 
+# Repeat forever
 def loop():
+	# Use the global count value
 	global count
+	# Update the leds with count value
 	GPIO.output(leds,states[count])
 
+# Callback for buttons pushed
 def button_callback(channel):
+	# Use the global count value
 	global count
 	# If increment button was pressed
 	if channel == buttons[0]: count += 1
 	# If decrement button was pressed
 	elif channel == buttons[1]: count -= 1
+	# Shouldn't get here
 	else: print("Unknown callback detected!")
 	# Bring value back into appropriate range for leds
 	count = count%(2**(len(leds)));
 
 
-# Only run the functions if 
+# Only run the functions if invoked directly
 if __name__ == "__main__":
-	# Make sure the GPIO is stopped correctly
 	try:
+		# Once
 		setup()
+		# Forever
 		while True:
 			loop()
 	except KeyboardInterrupt:
 		print("Exiting gracefully")
-		# Turn off your GPIOs here
+		# Turn off GPIOs
 		GPIO.cleanup()
-	except e:
+	except Exception as e:
 		GPIO.cleanup()
-		print("Some other error occurred")
+		print("An error occurred!")
 		print(e.message)
