@@ -14,9 +14,7 @@ int main(int argc, char**argv){
     fptr = fopen("../log.csv","a+");
     fptr_acc = fopen("../GoldenMeasureData.csv","r+");
 
-    fprintf(fptr, "C,");
     printf("Running Unthreaded Test\n");
-    fprintf(fptr, "Unthreaded,");
     printf("Precision sizeof %d\n", sizeof(float));
     fprintf(fptr, "%d,",sizeof(float));
 

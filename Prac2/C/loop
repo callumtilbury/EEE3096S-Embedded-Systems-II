@@ -1,2 +1,12 @@
 #!/bin/bash
-for i in {1..1000}; do make run; echo "$i"; done
+
+log="../log.csv"
+
+echo -n "C,Unthreaded,$1," >> $log;
+make
+stat --printf="%s\n" bin/Prac2 >> $log;
+for i in {1..100};
+	do
+	echo "Iteration: $i";
+	make run;
+	done
