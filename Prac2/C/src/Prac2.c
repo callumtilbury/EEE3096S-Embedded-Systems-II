@@ -5,7 +5,7 @@ extern float carrier[SAMPLE_COUNT];
 
 float result [SAMPLE_COUNT];
 
-float epsilon = 0.005;
+float epsilon = 0.000001;
 
 FILE *fptr;
 FILE *fptr_acc;
