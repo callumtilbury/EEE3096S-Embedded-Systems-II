@@ -27,7 +27,7 @@ int main(int argc, char**argv){
     double t = toc();
     printf("Time: %lf ms\n",t/1e-3);
     fprintf(fptr, "%lf,",t/1e-3);
-    
+
     // Accuracy check:
     long diff = 0;
     float correct_result = 0;
@@ -35,15 +35,14 @@ int main(int argc, char**argv){
         fscanf(fptr_acc, "%f,", &correct_result);
         if(abs(correct_result-result[j]) > epsilon) {
              diff += 1;
-	     printf("%f", diff);
-        }
+       	}
     }
 
-    //fprintf(fptr, "%f,%f\n", epsilon, diff);
-    printf("Errors found with epsilon = %f: %f\n",epsilon,diff);
+    fprintf(fptr, "%f,%d\n", epsilon, diff);
+    printf("Errors found with epsilon = %f: %d\n",epsilon,diff);
     printf("End Unthreaded Test\n");
-    
-    //fclose(fptr);
+
+    fclose(fptr);
 
     return 0;
 }
