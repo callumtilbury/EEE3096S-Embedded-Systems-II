@@ -1,0 +1,4 @@
+#!/bin/bash
+make threaded
+
+for i in {1..1000}; do make run_threaded; echo "$i"; done
