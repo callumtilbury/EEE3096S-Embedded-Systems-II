@@ -15,8 +15,8 @@ int main(int argc, char**argv){
     fptr_acc = fopen("../GoldenMeasureData.csv","r+");
 
     printf("Running Unthreaded Test\n");
-    printf("Precision sizeof %d\n", sizeof(float));
-    fprintf(fptr, "%d,",sizeof(float));
+    printf("Precision sizeof %d\n", sizeof(result[0]));
+    fprintf(fptr, "%d,",sizeof(result[0]));
 
     tic(); // start the timer
     for (int i = 0;i<SAMPLE_COUNT;i++ ){
@@ -41,6 +41,7 @@ int main(int argc, char**argv){
     printf("End Unthreaded Test\n");
 
     fclose(fptr);
+    fclose(fptr_acc);
 
     return 0;
 }

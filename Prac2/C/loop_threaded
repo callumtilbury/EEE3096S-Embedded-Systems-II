@@ -1,4 +1,13 @@
 #!/bin/bash
-make threaded
 
-for i in {1..1000}; do make run_threaded; echo "$i"; done
+log="../log.csv"
+
+echo -n "C,Threaded,$1," >> $log;
+make threaded
+stat --printf="%s\n" bin/Prac2_threaded >> $log;
+
+for i in {1..100};
+	do
+	echo "Iteration: $i";
+	make run_threaded;
+	done

@@ -2,6 +2,9 @@
 
 float result [SAMPLE_COUNT];
 FILE *fptr;
+FILE *fptr_acc;
+
+float epsilon = 0.000001;
 
 // This is each thread's "main" function.  It receives a unique ID
 void* Thread_Main(void* Parameter){
@@ -20,8 +23,9 @@ void* Thread_Main(void* Parameter){
 // Point of entry into program
 int main(int argc, char** argv){
     fptr = fopen("../log.csv","a+");
-    
-    fprintf(fptr, "C,Threaded,%d,",Thread_Count);
+    fptr_acc = fopen("../GoldenMeasureData.csv","r+");    
+
+    fprintf(fptr, "%d,",Thread_Count);
     
     int j;
     // Initialise everything that requires initialisation
@@ -54,9 +58,26 @@ int main(int argc, char** argv){
 
   printf("All threads have quit\n");
   double t = toc();
-  fprintf(fptr, "%lg\n", t/1e-3);
+  fprintf(fptr, "%lg,", t/1e-3);
   printf("Time taken for threads to run = %lg ms\n", t/1e-3);
-  return 0;
+  
+  // Accuracy check:
+    long diff = 0;
+    float correct_result = 0;
+    for (int j = 0; j < SAMPLE_COUNT; j++) {
+        fscanf(fptr_acc, "%f,", &correct_result);
+        if(abs(correct_result-result[j]) > epsilon) {
+             diff += 1;
+        }
+    }
+
+    fprintf(fptr, "%f,%d\n", epsilon, diff);
+    printf("Errors found with epsilon = %f: %d\n",epsilon,diff);
+
+  fclose(fptr);
+  fclose(fptr_acc);
+
+return 0;
 }
 //------------------------------------------------------------------------------
 
