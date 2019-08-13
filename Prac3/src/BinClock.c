@@ -4,7 +4,7 @@
  * Modified for EEE3095S/3096S by Keegan Crankshaw
  * August 2019
  * 
- * <STUDNUM_1> <STUDNUM_2>
+ * <PGNDEV001> <TLBCAL002>
  * Date
 */
 
@@ -34,6 +34,9 @@ void initGPIO(void){
 	
 	RTC = wiringPiI2CSetup(RTCAddr); //Set up the RTC
 	
+	// TODO: Change RTC to use 12 hour mode
+	// wiringPiI2CWriteReg16(RTC, HOUR, wiringPiI2CReadReg16(RTC,HOUR) | 0b01000000);
+
 	//Set up the LEDS
 	for(int i; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
 	    pinMode(LEDS[i], OUTPUT);
@@ -51,8 +54,9 @@ void initGPIO(void){
 	}
 	
 	//Attach interrupts to Buttons
-	//Write your logic here
-	
+	wiringPiISR(BTNS[0], INT_EDGE_RISING, &hourInc);
+	wiringPiISR(BTNS[1], INT_EDGE_RISING, &minInc); 
+
 	printf("BTNS done\n");
 	printf("Setup done\n");
 }
@@ -71,14 +75,23 @@ int main(void){
 	wiringPiI2CWriteReg8(RTC, MIN, 0x4);
 	wiringPiI2CWriteReg8(RTC, SEC, 0x00);
 	
+	
+
+	int count = 0;
 	// Repeat this until we shut down
 	for (;;){
 		//Fetch the time from the RTC
 		//Write your logic here
-		
+		hours = wiringPiI2CReadReg8(RTC, HOUR);
+		mins = wiringPiI2CReadReg8(RTC, MIN);
+		secs = wiringPiI2CReadReg8(RTC, SEC);
+
 		//Function calls to toggle LEDs
 		//Write your logic here
 		
+		// TESTING LEDS (remove this!!)
+		digitalWrite(LEDS[count++], 1);
+
 		// Print out the time we have stored on our RTC
 		printf("The current time is: %x:%x:%x\n", hours, mins, secs);
 
@@ -194,8 +207,12 @@ void hourInc(void){
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 1 triggered, %x\n", hours);
 		//Fetch RTC Time
+		hours = wiringPiI2CReadReg8(RTC, HOUR);
 		//Increase hours by 1, ensuring not to overflow
+		hours = hFormat(hours+1);
 		//Write hours back to the RTC
+		// TODO: This is giving a funky hex output for >= 10 -- explore. 
+		wiringPiI2CWriteReg8(RTC, HOUR, hours);
 	}
 	lastInterruptTime = interruptTime;
 }
@@ -212,8 +229,11 @@ void minInc(void){
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 2 triggered, %x\n", mins);
 		//Fetch RTC Time
+		minutes = wiringPiI2CReadReg8(RTC, MIN);
 		//Increase minutes by 1, ensuring not to overflow
+		minutes++;
 		//Write minutes back to the RTC
+		wiringPiI2CWriteReg8(RTC, HOUR, hours);
 	}
 	lastInterruptTime = interruptTime;
 }
