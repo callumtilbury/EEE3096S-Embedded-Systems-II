@@ -12,13 +12,15 @@
 #include <wiringPiI2C.h>
 #include <stdio.h> //For printf functions
 #include <stdlib.h> // For system functions
-#include <signal.h>
+#include <signal.h> // For keyboard interrupt handling
+#include <math.h> // For some operations
+#include <softPwm.h> // For pwm on 'seconds' LED
 
 #include "BinClock.h"
 #include "CurrentTime.h"
 
 //Global variables
-int hours, mins, secs;
+//int hours, mins, secs;
 int HH, MM, SS;
 
 long lastInterruptTime = 0; //Used for button debounce
@@ -38,12 +40,19 @@ void initGPIO(void){
 	//Set up the LEDS
 	for(int i = 0; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
 		pinMode(LEDS[i], OUTPUT);
+		// Quick fun visual display
 		digitalWrite(LEDS[i], 1);
+		delay(50);
+		digitalWrite(LEDS[i], 0);
 	}
 	
 	//Set Up the Seconds LED for PWM
-	//Write your logic here
-	
+	softPwmCreate(SECS, 0, 60);
+	for(int i = 0; i < 60; i++) {
+		softPwmWrite(SECS, i);
+		delay(10);
+	}
+
 	printf("LEDS done\n");
 	
 	//Set up the Buttons
@@ -69,6 +78,7 @@ void cleanGPIO(void) {
 	for(int i = 0; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
 		pinMode(LEDS[i], INPUT);
 	}
+	pinMode(SECS, INPUT);
 	exit(1);
 }
 
@@ -80,32 +90,16 @@ int main(void){
 	initGPIO();
 	signal(SIGINT, cleanGPIO);
 
-	//Set random time (3:04PM)
-	//You can comment this file out later
-	//wiringPiI2CWriteReg8(RTC, HOUR, hexCompensation(3)+TIMEZONE);
-	//wiringPiI2CWriteReg8(RTC, MIN, 0x24);
-	//wiringPiI2CWriteReg8(RTC, SEC, 0x00);
-
+	// Setup using system time, which may or may not be accurate
 	getSystemTime();
-
 	printf("Initialised with time: %x:%x:%x\n", HH, MM, SS);
 
 	// Repeat this until we shut down
 	for (;;){
 		//Fetch the time from the RTC
-		//Write your logic here
-		//hours = hexCompensation(wiringPiI2CReadReg8(RTC, HOUR));
-		//mins = wiringPiI2CReadReg8(RTC, MIN);
-		//secs = wiringPiI2CReadReg8(RTC, SEC);
-		
 		updateTime();
-
-		//Function calls to toggle LEDs
-		//Write your logic here
-		//toggleTime();
 		// Print out the time we have stored on our RTC
-		//printf("The current time is: %x:%x:%x\n", hours, mins, secs);
-		printf("Time: %d:%d:%d\n", hours, mins, secs);
+		printf("Time: %d:%d:%d\n", HH, MM, SS);
 		//using a delay to make our program "less CPU hungry"
 		delay(1000); //milliseconds
 	}
@@ -113,40 +107,33 @@ int main(void){
 }
 
 /*
- * Change the hour format to 12 hours
- */
-int hFormat(int hours){
-	/*formats to 12h*/
-	if (hours >= 24){
-		hours = 0;
-	}
-	else if (hours > 12){
-		hours -= 12;
-	}
-	return (int)hours;
-}
-
-/*
  * Turns on corresponding LED's for hours
  */
 void lightHours(int units){
-	// Write your logic to light up the hour LEDs here	
+	for (int i = 3; i >= 0; i--) {
+		int tmp = pow(2,i);
+		digitalWrite(LEDS[i], units/tmp);
+		units %= tmp;
+	}
 }
 
 /*
  * Turn on the Minute LEDs
  */
 void lightMins(int units){
-	//Write your logic to light up the minute LEDs here
+	for (int i = 9; i >= 4; i--) {
+		int tmp = pow(2,i-4);
+		digitalWrite(LEDS[i], units/tmp);
+		units %= tmp;
+	}
 }
 
 /*
- * PWM on the Seconds LED
- * The LED should have 60 brightness levels
- * The LED should be "off" at 0 seconds, and fully bright at 59 seconds
+ * PWM for the Seconds LED
+ * Off == 0 seconds ---> Full brightness == 60 seconds
  */
 void secPWM(int units){
-	// Write your logic here
+	softPwmWrite(SECS, units);
 }
 
 /*
@@ -216,13 +203,16 @@ void hourInc(void){
 	long interruptTime = millis();
 
 	if (interruptTime - lastInterruptTime>200){
-		printf("Interrupt 1 triggered, %x\n", hours);
+		printf("Button 1 pressed: increase hours\n");
 		// Fetch RTC Time
 		updateTime();
 		// Increase hours by 1, ensuring not to overflow
-		hours = (hours+1)%12;
-		//Write hours back to the RTC
-		HH = decCompensation(hours);
+		HH = (HH+1)%12;
+		// Display value on LEDs
+		lightHours(HH);
+		// Convert to BCD
+		HH = decCompensation(HH);
+		// Write hours back to the RTC
 		wiringPiI2CWriteReg8(RTC, HOUR, HH);
 	}
 	lastInterruptTime = interruptTime;
@@ -238,42 +228,45 @@ void minInc(void){
 	long interruptTime = millis();
 
 	if (interruptTime - lastInterruptTime>200){
-		printf("Interrupt 2 triggered, %x\n", mins);
+		printf("Button 2 pressed: increase minutes\n");
 		//Fetch RTC Time
 		updateTime();
 		//Increase minutes by 1, ensuring not to overflow
-		mins = (mins+1)%60;
-		//Write minutes back to the RTC
-		MM = decCompensation(mins);
+		MM = (MM+1)%60;
+		// Display value on LEDs
+		lightMins(MM);
+		// Convert to BCD
+		MM = decCompensation(MM);
+		// Write minutes back to the RTC
 		wiringPiI2CWriteReg8(RTC, MIN, MM);
 	}
 	lastInterruptTime = interruptTime;
 }
 
-//This interrupt will fetch current time from another script and write it to the clock registers
-//This functions will toggle a flag that is checked in main
+// Grabs system time if possible
 void getSystemTime(void){
-	HH = getHours();
-	printf("H: %d\n", HH);
-	MM = getMins();
-	printf("M: %d\n", MM);
-	SS = getSecs();
-	printf("S: %d\n", SS);
+	HH = getHours()%12;
+	MM = getMins()%60;
+	SS = getSecs()%60;
 
-	HH = hFormat(HH);
+	lightHours(HH);
 	HH = decCompensation(HH);
 	wiringPiI2CWriteReg8(RTC, HOUR, HH);
 
-	MM = decCompensation(MM);
+	lightMins(MM);
+	MM = decCompensation(MM%60);
 	wiringPiI2CWriteReg8(RTC, MIN, MM);
 
-	SS = decCompensation(SS);
+	secPWM(SS);
+	SS = decCompensation(SS%60);
 	wiringPiI2CWriteReg8(RTC, SEC, 0b10000000+SS);
 }
 
 void updateTime(void){
-        hours = hexCompensation(wiringPiI2CReadReg8(RTC, HOUR));
-	printf("H: %d\n", hours);
-	mins = hexCompensation(wiringPiI2CReadReg8(RTC, MIN));
-        secs = hexCompensation(wiringPiI2CReadReg8(RTC, SEC));
+        HH = (hexCompensation(wiringPiI2CReadReg8(RTC, HOUR))%12);
+	MM = hexCompensation(wiringPiI2CReadReg8(RTC, MIN));
+        SS = hexCompensation(wiringPiI2CReadReg8(RTC, SEC) & 0b01111111);
+	lightHours(HH);
+	lightMins(MM);
+	secPWM(SS);
 }
