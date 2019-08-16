@@ -55,6 +55,7 @@ void initGPIO(void){
 	//Attach interrupts to Buttons
 	//Write your logic here
 	wiringPiISR(BTNS[0], INT_EDGE_RISING, &hourInc);
+	//wiringPiISR(BTNS[0], INT_EDGE_RISING, &plusHours);
 	wiringPiISR(BTNS[1], INT_EDGE_RISING, &minInc); 
 
 	
@@ -81,25 +82,30 @@ int main(void){
 
 	//Set random time (3:04PM)
 	//You can comment this file out later
-	wiringPiI2CWriteReg8(RTC, HOUR, 0x13+TIMEZONE);
-	wiringPiI2CWriteReg8(RTC, MIN, 0x4);
-	wiringPiI2CWriteReg8(RTC, SEC, 0x00);
-	
+	//wiringPiI2CWriteReg8(RTC, HOUR, hexCompensation(3)+TIMEZONE);
+	//wiringPiI2CWriteReg8(RTC, MIN, 0x24);
+	//wiringPiI2CWriteReg8(RTC, SEC, 0x00);
+
+	getSystemTime();
+
+	printf("Initialised with time: %x:%x:%x\n", HH, MM, SS);
+
 	// Repeat this until we shut down
 	for (;;){
 		//Fetch the time from the RTC
 		//Write your logic here
-		hours = wiringPiI2CReadReg8(RTC, HOUR);
-		mins = wiringPiI2CReadReg8(RTC, MIN);
-		secs = wiringPiI2CReadReg8(RTC, SEC);
+		//hours = hexCompensation(wiringPiI2CReadReg8(RTC, HOUR));
+		//mins = wiringPiI2CReadReg8(RTC, MIN);
+		//secs = wiringPiI2CReadReg8(RTC, SEC);
 		
+		updateTime();
 
 		//Function calls to toggle LEDs
 		//Write your logic here
-		
+		//toggleTime();
 		// Print out the time we have stored on our RTC
-		printf("The current time is: %x:%x:%x\n", hours, mins, secs);
-
+		//printf("The current time is: %x:%x:%x\n", hours, mins, secs);
+		printf("Time: %x:%x:%x\n", HH, MM, SS);
 		//using a delay to make our program "less CPU hungry"
 		delay(1000); //milliseconds
 	}
@@ -211,13 +217,12 @@ void hourInc(void){
 
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 1 triggered, %x\n", hours);
-		//Fetch RTC Time
-		hours = wiringPiI2CReadReg8(RTC, HOUR);
-		//Increase hours by 1, ensuring not to overflow
-		hours = hFormat(hours+1);
+		// Fetch RTC Time
+		HH = wiringPiI2CReadReg8(RTC, HOUR)+1;
+		HH = hFormat(HH);
 		//Write hours back to the RTC
 		// TODO: This is giving a funky hex output for >= 10 -- explore. 
-		wiringPiI2CWriteReg8(RTC, HOUR, hours);
+		wiringPiI2CWriteReg8(RTC, HOUR, HH);
 	}
 	lastInterruptTime = interruptTime;
 }
@@ -234,35 +239,42 @@ void minInc(void){
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 2 triggered, %x\n", mins);
 		//Fetch RTC Time
-		mins = wiringPiI2CReadReg8(RTC, MIN);
+		MM = wiringPiI2CReadReg8(RTC, MIN);
 		//Increase minutes by 1, ensuring not to overflow
-		mins++;
+		MM = (MM+1)%60;
 		//Write minutes back to the RTC
-		wiringPiI2CWriteReg8(RTC, MIN, mins);
+		wiringPiI2CWriteReg8(RTC, MIN, MM);
 	}
 	lastInterruptTime = interruptTime;
 }
 
 //This interrupt will fetch current time from another script and write it to the clock registers
 //This functions will toggle a flag that is checked in main
-void toggleTime(void){
-	long interruptTime = millis();
+void getSystemTime(void){
+	HH = getHours();
+	printf("H: %d\n", HH);
+	MM = getMins();
+	printf("M: %d\n", MM);
+	SS = getSecs();
+	printf("S: %d\n", SS);
 
-	if (interruptTime - lastInterruptTime>200){
-		HH = getHours();
-		MM = getMins();
-		SS = getSecs();
+	HH = hFormat(HH);
+	HH = decCompensation(HH);
+	wiringPiI2CWriteReg8(RTC, HOUR, HH);
 
-		HH = hFormat(HH);
-		HH = decCompensation(HH);
-		wiringPiI2CWriteReg8(RTC, HOUR, HH);
+	MM = decCompensation(MM);
+	wiringPiI2CWriteReg8(RTC, MIN, MM);
 
-		MM = decCompensation(MM);
-		wiringPiI2CWriteReg8(RTC, MIN, MM);
+	SS = decCompensation(SS);
+	wiringPiI2CWriteReg8(RTC, SEC, 0b10000000+SS);
+}
 
-		SS = decCompensation(SS);
-		wiringPiI2CWriteReg8(RTC, SEC, 0b10000000+SS);
+//This interrupt will fetch current time from another script and write it to the clock registers
+//This functions will toggle a flag that is checked in main
+void updateTime(void){
+        HH = hexCompensation(wiringPiI2CReadReg8(RTC, HOUR));
 
-	}
-	lastInterruptTime = interruptTime;
+	MM = wiringPiI2CReadReg8(RTC, MIN);
+
+        SS = wiringPiI2CReadReg8(RTC, SEC);
 }

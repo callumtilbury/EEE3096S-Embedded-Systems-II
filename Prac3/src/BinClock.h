@@ -15,7 +15,8 @@ void initGPIO(void);
 void secPWM(int units);
 void hourInc(void);
 void minInc(void);
-void toggleTime(void);
+void getSystemTime(void);
+void updateTime(void);
 
 // define constants
 const char RTCAddr = 0x6f;
