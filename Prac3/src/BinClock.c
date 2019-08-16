@@ -36,8 +36,9 @@ void initGPIO(void){
 	RTC = wiringPiI2CSetup(RTCAddr); //Set up the RTC
 	
 	//Set up the LEDS
-	for(int i; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
-	    pinMode(LEDS[i], OUTPUT);
+	for(int i = 0; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
+		pinMode(LEDS[i], OUTPUT);
+		digitalWrite(LEDS[i], 1);
 	}
 	
 	//Set Up the Seconds LED for PWM
@@ -60,7 +61,8 @@ void initGPIO(void){
 
 void cleanGPIO(void) {
 	printf("\nCleaning up... Bye!\n");
-    	for(int i; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
+    	digitalWrite(LEDS[0],0);
+	for(int i = 0; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
 		pinMode(LEDS[i], INPUT);
 	}
 	exit(1);
