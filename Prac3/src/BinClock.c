@@ -54,6 +54,9 @@ void initGPIO(void){
 	
 	//Attach interrupts to Buttons
 	//Write your logic here
+	wiringPiISR(BTNS[0], INT_EDGE_RISING, &hourInc);
+	wiringPiISR(BTNS[1], INT_EDGE_RISING, &minInc); 
+
 	
 	printf("BTNS done\n");
 	printf("Setup done\n");
@@ -86,7 +89,11 @@ int main(void){
 	for (;;){
 		//Fetch the time from the RTC
 		//Write your logic here
+		hours = wiringPiI2CReadReg8(RTC, HOUR);
+		mins = wiringPiI2CReadReg8(RTC, MIN);
+		secs = wiringPiI2CReadReg8(RTC, SEC);
 		
+
 		//Function calls to toggle LEDs
 		//Write your logic here
 		
@@ -205,8 +212,12 @@ void hourInc(void){
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 1 triggered, %x\n", hours);
 		//Fetch RTC Time
+		hours = wiringPiI2CReadReg8(RTC, HOUR);
 		//Increase hours by 1, ensuring not to overflow
+		hours = hFormat(hours+1);
 		//Write hours back to the RTC
+		// TODO: This is giving a funky hex output for >= 10 -- explore. 
+		wiringPiI2CWriteReg8(RTC, HOUR, hours);
 	}
 	lastInterruptTime = interruptTime;
 }
@@ -223,8 +234,11 @@ void minInc(void){
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 2 triggered, %x\n", mins);
 		//Fetch RTC Time
+		mins = wiringPiI2CReadReg8(RTC, MIN);
 		//Increase minutes by 1, ensuring not to overflow
+		mins++;
 		//Write minutes back to the RTC
+		wiringPiI2CWriteReg8(RTC, MIN, mins);
 	}
 	lastInterruptTime = interruptTime;
 }
