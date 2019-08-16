@@ -5,7 +5,7 @@
  * August 2019
  * 
  * <PGNDEV001> <TLBCAL002>
- * Date
+ * 16 August 2019
 */
 
 #include <wiringPi.h>
@@ -15,6 +15,7 @@
 #include <signal.h> // For keyboard interrupt handling
 #include <math.h> // For some operations
 #include <softPwm.h> // For pwm on 'seconds' LED
+#include <stdbool.h>  // To allow bool data type
 
 #include "BinClock.h"
 #include "CurrentTime.h"
@@ -26,13 +27,15 @@ int bounceTime = 200; // ms
 long lastInterruptTime = 0; //Used for button debounce
 int RTC; //Holds the RTC instance
 
+bool verbose = true;
+
 void initGPIO(void){
 	/* 
 	 * Sets GPIO using wiringPi pins. see pinout.xyz for specific wiringPi pins
 	 * You can also use "gpio readall" in the command line to get the pins
 	 * Note: wiringPi does not use GPIO or board pin numbers (unless specifically set to that mode)
 	 */
-	printf("Setting up\n");
+	if(verbose) printf("Setting up\n");
 	wiringPiSetup(); //This is the default mode. If you want to change pinouts, be aware
 	
 	RTC = wiringPiI2CSetup(RTCAddr); //Set up the RTC
@@ -53,7 +56,7 @@ void initGPIO(void){
 		delay(10);
 	}
 
-	printf("LEDS done\n");
+	if(verbose) printf("LEDS done\n");
 	
 	//Set up the Buttons
 	for(int j; j < sizeof(BTNS)/sizeof(BTNS[0]); j++){
@@ -62,18 +65,15 @@ void initGPIO(void){
 	}
 	
 	//Attach interrupts to Buttons
-	//Write your logic here
 	wiringPiISR(BTNS[0], INT_EDGE_RISING, &hourInc);
-	//wiringPiISR(BTNS[0], INT_EDGE_RISING, &plusHours);
 	wiringPiISR(BTNS[1], INT_EDGE_RISING, &minInc); 
 
-	
-	printf("BTNS done\n");
-	printf("Setup done\n");
+	if(verbose) printf("BTNS done\n");
+	if(verbose) printf("Setup done\n");
 }
 
 void cleanGPIO(void) {
-	printf("\nCleaning up... Bye!\n");
+	if(verbose) printf("\nCleaning up... Bye!\n");
     	digitalWrite(LEDS[0],0);
 	for(int i = 0; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
 		pinMode(LEDS[i], INPUT);
@@ -86,20 +86,24 @@ void cleanGPIO(void) {
  * The main function
  * This function is called, and calls all relevant functions we've written
  */
-int main(void){
+int main(int argc, char* argv[]) {
+	if (argc >= 2) {
+		verbose = false; // Just pass any second argument in to put program into silent mode
+	} else verbose = true;
+
 	initGPIO();
 	signal(SIGINT, cleanGPIO);
 
 	// Setup using system time, which may or may not be accurate
 	getSystemTime();
-	printf("Initialised with time: %x:%x:%x\n", HH, MM, SS);
+	if(verbose) printf("Initialised with time: %x:%x:%x\n", HH, MM, SS);
 
 	// Repeat this until we shut down
 	for (;;){
 		//Fetch the time from the RTC
 		updateTime();
 		// Print out the time we have stored on our RTC
-		printf("Time: %d:%d:%d\n", HH, MM, SS);
+		if(verbose) printf("Time: %d:%d:%d\n", HH, MM, SS);
 		//using a delay to make our program "less CPU hungry"
 		delay(1000); //milliseconds
 	}
