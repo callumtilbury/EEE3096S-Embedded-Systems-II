@@ -22,7 +22,7 @@
 //Global variables
 //int hours, mins, secs;
 int HH, MM, SS;
-
+int bounceTime = 200; // ms
 long lastInterruptTime = 0; //Used for button debounce
 int RTC; //Holds the RTC instance
 
@@ -110,8 +110,8 @@ int main(void){
  * Turns on corresponding LED's for hours
  */
 void lightHours(int units){
-	for (int i = 3; i >= 0; i--) {
-		int tmp = pow(2,i);
+	for (int i = 0; i <= 3; i++) {
+		int tmp = pow(2,3-i);
 		digitalWrite(LEDS[i], units/tmp);
 		units %= tmp;
 	}
@@ -121,8 +121,8 @@ void lightHours(int units){
  * Turn on the Minute LEDs
  */
 void lightMins(int units){
-	for (int i = 9; i >= 4; i--) {
-		int tmp = pow(2,i-4);
+	for (int i = 4; i <= 9; i++) {
+		int tmp = pow(2,9-i);
 		digitalWrite(LEDS[i], units/tmp);
 		units %= tmp;
 	}
@@ -202,8 +202,7 @@ void hourInc(void){
 	//Debounce
 	long interruptTime = millis();
 
-	if (interruptTime - lastInterruptTime>200){
-		printf("Button 1 pressed: increase hours\n");
+	if (interruptTime - lastInterruptTime > bounceTime){
 		// Fetch RTC Time
 		updateTime();
 		// Increase hours by 1, ensuring not to overflow
@@ -227,12 +226,14 @@ void hourInc(void){
 void minInc(void){
 	long interruptTime = millis();
 
-	if (interruptTime - lastInterruptTime>200){
-		printf("Button 2 pressed: increase minutes\n");
+	if (interruptTime - lastInterruptTime > bounceTime){
 		//Fetch RTC Time
 		updateTime();
-		//Increase minutes by 1, ensuring not to overflow
-		MM = (MM+1)%60;
+		// Increase minutes by 1
+		if ((++MM) >= 60) {
+			hourInc();
+			MM = 0;
+		}
 		// Display value on LEDs
 		lightMins(MM);
 		// Convert to BCD
@@ -246,19 +247,19 @@ void minInc(void){
 // Grabs system time if possible
 void getSystemTime(void){
 	HH = getHours()%12;
-	MM = getMins()%60;
-	SS = getSecs()%60;
+	MM = getMins();
+	SS = getSecs();
 
 	lightHours(HH);
 	HH = decCompensation(HH);
 	wiringPiI2CWriteReg8(RTC, HOUR, HH);
 
 	lightMins(MM);
-	MM = decCompensation(MM%60);
+	MM = decCompensation(MM);
 	wiringPiI2CWriteReg8(RTC, MIN, MM);
 
 	secPWM(SS);
-	SS = decCompensation(SS%60);
+	SS = decCompensation(SS);
 	wiringPiI2CWriteReg8(RTC, SEC, 0b10000000+SS);
 }
 
