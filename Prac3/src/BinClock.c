@@ -19,10 +19,10 @@
 
 //Global variables
 int hours, mins, secs;
+int HH, MM, SS;
+
 long lastInterruptTime = 0; //Used for button debounce
 int RTC; //Holds the RTC instance
-
-int HH,MM,SS;
 
 void initGPIO(void){
 	/* 
@@ -105,7 +105,7 @@ int main(void){
 		//toggleTime();
 		// Print out the time we have stored on our RTC
 		//printf("The current time is: %x:%x:%x\n", hours, mins, secs);
-		printf("Time: %x:%x:%x\n", HH, MM, SS);
+		printf("Time: %d:%d:%d\n", hours, mins, secs);
 		//using a delay to make our program "less CPU hungry"
 		delay(1000); //milliseconds
 	}
@@ -218,10 +218,11 @@ void hourInc(void){
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 1 triggered, %x\n", hours);
 		// Fetch RTC Time
-		HH = wiringPiI2CReadReg8(RTC, HOUR)+1;
-		HH = hFormat(HH);
+		updateTime();
+		// Increase hours by 1, ensuring not to overflow
+		hours = (hours+1)%12;
 		//Write hours back to the RTC
-		// TODO: This is giving a funky hex output for >= 10 -- explore. 
+		HH = decCompensation(hours);
 		wiringPiI2CWriteReg8(RTC, HOUR, HH);
 	}
 	lastInterruptTime = interruptTime;
@@ -239,10 +240,11 @@ void minInc(void){
 	if (interruptTime - lastInterruptTime>200){
 		printf("Interrupt 2 triggered, %x\n", mins);
 		//Fetch RTC Time
-		MM = wiringPiI2CReadReg8(RTC, MIN);
+		updateTime();
 		//Increase minutes by 1, ensuring not to overflow
-		MM = (MM+1)%60;
+		mins = (mins+1)%60;
 		//Write minutes back to the RTC
+		MM = decCompensation(mins);
 		wiringPiI2CWriteReg8(RTC, MIN, MM);
 	}
 	lastInterruptTime = interruptTime;
@@ -269,12 +271,9 @@ void getSystemTime(void){
 	wiringPiI2CWriteReg8(RTC, SEC, 0b10000000+SS);
 }
 
-//This interrupt will fetch current time from another script and write it to the clock registers
-//This functions will toggle a flag that is checked in main
 void updateTime(void){
-        HH = hexCompensation(wiringPiI2CReadReg8(RTC, HOUR));
-
-	MM = wiringPiI2CReadReg8(RTC, MIN);
-
-        SS = wiringPiI2CReadReg8(RTC, SEC);
+        hours = hexCompensation(wiringPiI2CReadReg8(RTC, HOUR));
+	printf("H: %d\n", hours);
+	mins = hexCompensation(wiringPiI2CReadReg8(RTC, MIN));
+        secs = hexCompensation(wiringPiI2CReadReg8(RTC, SEC));
 }
