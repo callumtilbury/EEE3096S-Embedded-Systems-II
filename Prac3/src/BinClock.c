@@ -3,32 +3,35 @@
  * Jarrod Olivier
  * Modified for EEE3095S/3096S by Keegan Crankshaw
  * August 2019
- * 
+ * --
+ * EEE3096S Practical 3
+ * Devon Pugin & Callum Tilbury
  * <PGNDEV001> <TLBCAL002>
  * 16 August 2019
 */
 
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
-#include <stdio.h> //For printf functions
-#include <stdlib.h> // For system functions
-#include <signal.h> // For keyboard interrupt handling
-#include <math.h> // For some operations
-#include <softPwm.h> // For pwm on 'seconds' LED
-#include <stdbool.h>  // To allow bool data type
+#include <stdio.h> 	//For printf functions
+#include <stdlib.h> 	// For system functions
+#include <signal.h> 	// For keyboard interrupt handling
+#include <math.h> 	// For some operations
+#include <softPwm.h> 	// For pwm on 'seconds' LED
+#include <stdbool.h>  	// To allow bool data type
 
 #include "BinClock.h"
 #include "CurrentTime.h"
 
 //Global variables
-//int hours, mins, secs;
-int HH, MM, SS;
-int bounceTime = 200; // ms
-long lastInterruptTime = 0; //Used for button debounce
-int RTC; //Holds the RTC instance
+int HH, MM, SS;		// Stores the hour, minute and second time values
+int bounceTime = 200; 	// Minimum interval between interrupts (ms)
+long lastInterruptTime = 0; // Used for button debounce
+int RTC; 		// Holds the RTC instance
+bool verbose = true;	// Specifies if program should print info to screen
 
-bool verbose = true;
-
+/*
+ * Initialize GPIO pins
+ */
 void initGPIO(void){
 	/* 
 	 * Sets GPIO using wiringPi pins. see pinout.xyz for specific wiringPi pins
@@ -36,63 +39,69 @@ void initGPIO(void){
 	 * Note: wiringPi does not use GPIO or board pin numbers (unless specifically set to that mode)
 	 */
 	if(verbose) printf("Setting up\n");
-	wiringPiSetup(); //This is the default mode. If you want to change pinouts, be aware
+	wiringPiSetup(); // Default mode
 	
-	RTC = wiringPiI2CSetup(RTCAddr); //Set up the RTC
+	RTC = wiringPiI2CSetup(RTCAddr); // Set up the RTC
 	
-	//Set up the LEDS
+	// LED setup
 	for(int i = 0; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
-		pinMode(LEDS[i], OUTPUT);
-		// Quick fun visual display
+		pinMode(LEDS[i], OUTPUT); 	// Sets up LED pins as outputs
+		// Short visual display to indicate LEDs are working and setup routine is busy
 		digitalWrite(LEDS[i], 1);
 		delay(50);
 		digitalWrite(LEDS[i], 0);
 	}
 	
-	//Set Up the Seconds LED for PWM
-	softPwmCreate(SECS, 0, 60);
+	// Seconds LED setup
+	softPwmCreate(SECS, 0, 60); // PWM range between 0 and 60
+	// Short visual display to indicate LED is working
 	for(int i = 0; i < 60; i++) {
-		softPwmWrite(SECS, i);
+		softPwmWrite(SECS, i); 
 		delay(10);
 	}
 
 	if(verbose) printf("LEDS done\n");
 	
-	//Set up the Buttons
+	// Buttons Setup
 	for(int j; j < sizeof(BTNS)/sizeof(BTNS[0]); j++){
-		pinMode(BTNS[j], INPUT);
-		pullUpDnControl(BTNS[j], PUD_UP);
+		pinMode(BTNS[j], INPUT);		// Button pins as inputs
+		pullUpDnControl(BTNS[j], PUD_UP); 	// Pull-up resistor
 	}
 	
-	//Attach interrupts to Buttons
-	wiringPiISR(BTNS[0], INT_EDGE_RISING, &hourInc);
-	wiringPiISR(BTNS[1], INT_EDGE_RISING, &minInc); 
+	// Attach interrupts to Buttons
+	wiringPiISR(BTNS[0], INT_EDGE_RISING, &hourInc);	// Hour increment button
+	wiringPiISR(BTNS[1], INT_EDGE_RISING, &minInc); 	// Minute increment button
 
 	if(verbose) printf("BTNS done\n");
+	
 	if(verbose) printf("Setup done\n");
 }
 
+/*
+ * Deinitialize and reset GPIO pins
+ */
 void cleanGPIO(void) {
 	if(verbose) printf("\nCleaning up... Bye!\n");
-    	digitalWrite(LEDS[0],0);
+	
+	// Set all LED pins back to INPUTS, as this is safer
 	for(int i = 0; i < sizeof(LEDS)/sizeof(LEDS[0]); i++){
 		pinMode(LEDS[i], INPUT);
 	}
-	pinMode(SECS, INPUT);
-	exit(1);
+	pinMode(SECS, INPUT); 	// Set Seconds LED back to INPUT
+	exit(1);		// Can now safely exit the program
 }
 
 /*
- * The main function
- * This function is called, and calls all relevant functions we've written
+ * Main function
  */
 int main(int argc, char* argv[]) {
+	// User has option to enable silent mode by passing in any second argument when invoking program
 	if (argc >= 2) {
-		verbose = false; // Just pass any second argument in to put program into silent mode
+		verbose = false;
 	} else verbose = true;
 
-	initGPIO();
-	signal(SIGINT, cleanGPIO);
+	initGPIO(); 			// Setup pins
+	signal(SIGINT, cleanGPIO);	// Add Ctrl-C interrupt to clean GPIO pins on exit
 
 	// Setup using system time, which may or may not be accurate
 	getSystemTime();
@@ -100,12 +109,12 @@ int main(int argc, char* argv[]) {
 
 	// Repeat this until we shut down
 	for (;;){
-		//Fetch the time from the RTC
+		// Fetch the current time from the RTC and update the LEDs accordingly
 		updateTime();
-		// Print out the time we have stored on our RTC
+		// Print out the time we have stored on the RTC to the screen
 		if(verbose) printf("Time: %d:%d:%d\n", HH, MM, SS);
-		//using a delay to make our program "less CPU hungry"
-		delay(1000); //milliseconds
+		// Using a delay to make our program "less CPU hungry"
+		delay(1000); // ms
 	}
 	return 0;
 }
@@ -114,6 +123,7 @@ int main(int argc, char* argv[]) {
  * Turns on corresponding LED's for hours
  */
 void lightHours(int units){
+	// Simple algorithm for converting decimal value to binary, and then displaying result on the relevant LEDs
 	for (int i = 0; i <= 3; i++) {
 		int tmp = pow(2,3-i);
 		digitalWrite(LEDS[i], units/tmp);
@@ -125,6 +135,8 @@ void lightHours(int units){
  * Turn on the Minute LEDs
  */
 void lightMins(int units){
+	// Simple algorithm for converting decimal value to binary, and then displaying on the relevant LEDs
+	// Note that the "minutes" LEDs are in the LED array from index 4 to 9
 	for (int i = 4; i <= 9; i++) {
 		int tmp = pow(2,9-i);
 		digitalWrite(LEDS[i], units/tmp);
@@ -142,7 +154,6 @@ void secPWM(int units){
 
 /*
  * hexCompensation
- * This function may not be necessary if you use bit-shifting rather than decimal checking for writing out time values
  */
 int hexCompensation(int units){
 	/*Convert HEX or BCD value to DEC where 0x45 == 0d45 
@@ -198,14 +209,12 @@ int decCompensation(int units){
 
 /*
  * hourInc
- * Fetch the hour value off the RTC, increase it by 1, and write back
- * Be sure to cater for there only being 23 hours in a day
- * Software Debouncing should be used
+ * Fetch the hour value off the RTC, increase it by 1, and write back to RTC
+ * Software debouncing used
  */
 void hourInc(void){
-	//Debounce
+	// Debounce
 	long interruptTime = millis();
-
 	if (interruptTime - lastInterruptTime > bounceTime){
 		// Fetch RTC Time
 		updateTime();
@@ -224,16 +233,15 @@ void hourInc(void){
 /* 
  * minInc
  * Fetch the minute value off the RTC, increase it by 1, and write back
- * Be sure to cater for there only being 60 minutes in an hour
  * Software Debouncing should be used
  */
 void minInc(void){
+	// Debounce
 	long interruptTime = millis();
-
 	if (interruptTime - lastInterruptTime > bounceTime){
 		//Fetch RTC Time
 		updateTime();
-		// Increase minutes by 1
+		// Increase minutes by 1, and update hours if necessary
 		if ((++MM) >= 60) {
 			hourInc();
 			MM = 0;
@@ -253,24 +261,29 @@ void getSystemTime(void){
 	HH = getHours()%12;
 	MM = getMins();
 	SS = getSecs();
-
+	
+	// Hours
 	lightHours(HH);
 	HH = decCompensation(HH);
 	wiringPiI2CWriteReg8(RTC, HOUR, HH);
 
+	// Minutes
 	lightMins(MM);
 	MM = decCompensation(MM);
 	wiringPiI2CWriteReg8(RTC, MIN, MM);
 
+	// Seconds
 	secPWM(SS);
 	SS = decCompensation(SS);
 	wiringPiI2CWriteReg8(RTC, SEC, 0b10000000+SS);
 }
 
 void updateTime(void){
+	// Updates time from RTC reading
         HH = (hexCompensation(wiringPiI2CReadReg8(RTC, HOUR))%12);
 	MM = hexCompensation(wiringPiI2CReadReg8(RTC, MIN));
         SS = hexCompensation(wiringPiI2CReadReg8(RTC, SEC) & 0b01111111);
+	// Displays time on LEDs
 	lightHours(HH);
 	lightMins(MM);
 	secPWM(SS);
